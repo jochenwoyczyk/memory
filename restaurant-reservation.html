@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tischreservierung – BPMN Token-Simulation</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/bpmn-js@18.13.2/dist/assets/diagram-js.css" />
+  <link rel="stylesheet" href="https://unpkg.com/bpmn-js@18.13.2/dist/assets/bpmn-js.css" />
+  <link rel="stylesheet" href="https://unpkg.com/bpmn-js@18.13.2/dist/assets/bpmn-font/css/bpmn-embedded.css" />
+  <link rel="stylesheet" href="https://unpkg.com/bpmn-js-token-simulation@0.39.3/assets/css/bpmn-js-token-simulation.css" />
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      color: #222;
+    }
+    #header {
+      padding: 14px 22px 12px 22px;
+      background: #f6f7f9;
+      border-bottom: 1px solid #dde1e6;
+      box-sizing: border-box;
+    }
+    #header h1 {
+      margin: 0 0 6px 0;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    #header p {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.45;
+      color: #555;
+      max-width: 900px;
+    }
+    #header code {
+      background: #ececec;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+    #canvas {
+      position: absolute;
+      top: 92px;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: #fff;
+    }
+    #error {
+      display: none;
+      position: absolute;
+      top: 110px;
+      left: 22px;
+      right: 22px;
+      padding: 16px 20px;
+      background: #fff4f4;
+      border: 1px solid #e0a3a3;
+      border-radius: 6px;
+      color: #a02323;
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 13px;
+      white-space: pre-wrap;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body>
+  <div id="header">
+    <h1>Klassische Tischreservierung im Restaurant</h1>
+    <p>
+      Klicke unten rechts im Diagramm auf das <strong>Play-Symbol</strong>, um den Token-Simulationsmodus zu aktivieren.
+      Anschließend startest du den Token am Start-Event "Reservierungswunsch". An den Gateways
+      <code>Tisch verfügbar?</code> und <code>Gast akzeptiert Alternative?</code> klickst du auf den ausgehenden
+      Pfad ("Ja" oder "Nein"), um den Token zu lenken. Über den Reset-Button kannst du den Durchlauf neu starten.
+    </p>
+  </div>
+
+  <div id="canvas"></div>
+  <div id="error"></div>
+
+  <script>
+    window.__BPMN_XML__ = `<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL"
+                  xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI"
+                  xmlns:dc="http://www.omg.org/spec/DD/20100524/DC"
+                  xmlns:di="http://www.omg.org/spec/DD/20100524/DI"
+                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  id="Definitions_Reservation"
+                  targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="Process_Reservation" isExecutable="false">
+    <bpmn:startEvent id="StartEvent_1" name="Reservierungswunsch">
+      <bpmn:outgoing>Flow_1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="Task_Kontakt" name="Kontakt aufnehmen (Telefon/Online)">
+      <bpmn:incoming>Flow_1</bpmn:incoming>
+      <bpmn:outgoing>Flow_2</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_Details" name="Reservierungsdetails aufnehmen">
+      <bpmn:incoming>Flow_2</bpmn:incoming>
+      <bpmn:outgoing>Flow_3</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_Pruefen" name="Tischverfügbarkeit prüfen">
+      <bpmn:incoming>Flow_3</bpmn:incoming>
+      <bpmn:incoming>Flow_Loop</bpmn:incoming>
+      <bpmn:outgoing>Flow_4</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="Gateway_Verfuegbar" name="Tisch verfügbar?">
+      <bpmn:incoming>Flow_4</bpmn:incoming>
+      <bpmn:outgoing>Flow_Ja</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Nein</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:task id="Task_Bestaetigen" name="Reservierung bestätigen">
+      <bpmn:incoming>Flow_Ja</bpmn:incoming>
+      <bpmn:outgoing>Flow_5</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="Task_Senden" name="Bestätigung senden">
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_6</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:endEvent id="EndEvent_Erfolg" name="Reservierung erfolgt">
+      <bpmn:incoming>Flow_6</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:task id="Task_Alternativ" name="Alternativtermin anbieten">
+      <bpmn:incoming>Flow_Nein</bpmn:incoming>
+      <bpmn:outgoing>Flow_7</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="Gateway_Akzeptiert" name="Gast akzeptiert Alternative?">
+      <bpmn:incoming>Flow_7</bpmn:incoming>
+      <bpmn:outgoing>Flow_Loop</bpmn:outgoing>
+      <bpmn:outgoing>Flow_Abbruch</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="EndEvent_Keine" name="Keine Reservierung">
+      <bpmn:incoming>Flow_Abbruch</bpmn:incoming>
+    </bpmn:endEvent>
+
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Task_Kontakt" />
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_Kontakt" targetRef="Task_Details" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Task_Details" targetRef="Task_Pruefen" />
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Task_Pruefen" targetRef="Gateway_Verfuegbar" />
+    <bpmn:sequenceFlow id="Flow_Ja" name="Ja" sourceRef="Gateway_Verfuegbar" targetRef="Task_Bestaetigen" />
+    <bpmn:sequenceFlow id="Flow_Nein" name="Nein" sourceRef="Gateway_Verfuegbar" targetRef="Task_Alternativ" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_Bestaetigen" targetRef="Task_Senden" />
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_Senden" targetRef="EndEvent_Erfolg" />
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="Task_Alternativ" targetRef="Gateway_Akzeptiert" />
+    <bpmn:sequenceFlow id="Flow_Loop" name="Ja" sourceRef="Gateway_Akzeptiert" targetRef="Task_Pruefen" />
+    <bpmn:sequenceFlow id="Flow_Abbruch" name="Nein" sourceRef="Gateway_Akzeptiert" targetRef="EndEvent_Keine" />
+  </bpmn:process>
+
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Process_Reservation">
+      <bpmndi:BPMNShape id="StartEvent_1_di" bpmnElement="StartEvent_1">
+        <dc:Bounds x="180" y="262" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="155" y="305" width="86" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Kontakt_di" bpmnElement="Task_Kontakt">
+        <dc:Bounds x="270" y="240" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Details_di" bpmnElement="Task_Details">
+        <dc:Bounds x="430" y="240" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Pruefen_di" bpmnElement="Task_Pruefen">
+        <dc:Bounds x="590" y="240" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Verfuegbar_di" bpmnElement="Gateway_Verfuegbar" isMarkerVisible="true">
+        <dc:Bounds x="745" y="255" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="731" y="218" width="78" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Bestaetigen_di" bpmnElement="Task_Bestaetigen">
+        <dc:Bounds x="850" y="240" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Senden_di" bpmnElement="Task_Senden">
+        <dc:Bounds x="1010" y="240" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Erfolg_di" bpmnElement="EndEvent_Erfolg">
+        <dc:Bounds x="1170" y="262" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1148" y="305" width="84" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Task_Alternativ_di" bpmnElement="Task_Alternativ">
+        <dc:Bounds x="720" y="380" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Gateway_Akzeptiert_di" bpmnElement="Gateway_Akzeptiert" isMarkerVisible="true">
+        <dc:Bounds x="865" y="395" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="845" y="455" width="92" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EndEvent_Keine_di" bpmnElement="EndEvent_Keine">
+        <dc:Bounds x="970" y="402" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="950" y="445" width="78" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+
+      <bpmndi:BPMNEdge id="Flow_1_di" bpmnElement="Flow_1">
+        <di:waypoint x="216" y="280" />
+        <di:waypoint x="270" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_2_di" bpmnElement="Flow_2">
+        <di:waypoint x="370" y="280" />
+        <di:waypoint x="430" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_3_di" bpmnElement="Flow_3">
+        <di:waypoint x="530" y="280" />
+        <di:waypoint x="590" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_4_di" bpmnElement="Flow_4">
+        <di:waypoint x="690" y="280" />
+        <di:waypoint x="745" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Ja_di" bpmnElement="Flow_Ja">
+        <di:waypoint x="795" y="280" />
+        <di:waypoint x="850" y="280" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="813" y="262" width="13" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Nein_di" bpmnElement="Flow_Nein">
+        <di:waypoint x="770" y="305" />
+        <di:waypoint x="770" y="380" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="776" y="335" width="22" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_5_di" bpmnElement="Flow_5">
+        <di:waypoint x="950" y="280" />
+        <di:waypoint x="1010" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_6_di" bpmnElement="Flow_6">
+        <di:waypoint x="1110" y="280" />
+        <di:waypoint x="1170" y="280" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_7_di" bpmnElement="Flow_7">
+        <di:waypoint x="820" y="420" />
+        <di:waypoint x="865" y="420" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Loop_di" bpmnElement="Flow_Loop">
+        <di:waypoint x="890" y="395" />
+        <di:waypoint x="890" y="170" />
+        <di:waypoint x="640" y="170" />
+        <di:waypoint x="640" y="240" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="760" y="152" width="13" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_Abbruch_di" bpmnElement="Flow_Abbruch">
+        <di:waypoint x="915" y="420" />
+        <di:waypoint x="970" y="420" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="932" y="402" width="22" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>`;
+  </script>
+
+  <script type="importmap">
+  {
+    "imports": {
+      "bpmn-js/lib/NavigatedViewer": "https://esm.sh/bpmn-js@18.13.2/lib/NavigatedViewer",
+      "bpmn-js-token-simulation/lib/viewer": "https://esm.sh/bpmn-js-token-simulation@0.39.3/lib/viewer"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import NavigatedViewer from 'bpmn-js/lib/NavigatedViewer';
+    import TokenSimulationModule from 'bpmn-js-token-simulation/lib/viewer';
+
+    const errorEl = document.getElementById('error');
+
+    function showError(message) {
+      errorEl.style.display = 'block';
+      errorEl.textContent = message;
+    }
+
+    try {
+      const viewer = new NavigatedViewer({
+        container: '#canvas',
+        additionalModules: [ TokenSimulationModule ]
+      });
+
+      await viewer.importXML(window.__BPMN_XML__);
+      viewer.get('canvas').zoom('fit-viewport', 'auto');
+    } catch (err) {
+      console.error('BPMN-Initialisierung fehlgeschlagen:', err);
+      showError('BPMN-Initialisierung fehlgeschlagen:\n' + (err && err.message ? err.message : String(err)));
+    }
+  </script>
+</body>
+</html>
